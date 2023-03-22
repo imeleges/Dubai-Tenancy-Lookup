@@ -85,7 +85,7 @@ def building_properties_similar(building_name, size, usage):
                     alt.Tooltip('count()', title = 'Number of observations')
                 ],
         color = alt.condition(
-            alt.datum.property_size == 99,
+            alt.datum.property_size == size,
             alt.value(selected_color), # selected value
             alt.value('#6baed6')) # everything else
     ).properties(

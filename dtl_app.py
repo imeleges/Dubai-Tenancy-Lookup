@@ -2,13 +2,28 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 import numpy as np
+from datetime import datetime
+
+# Get the current date and time in format as "23 Mar 2023"
+current_date = datetime.now().strftime("%d %b %Y")
 
 st.set_page_config(
-    page_title="DTL - Dubai Tenancy Lookup",
-    page_icon="🏠",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title = "DTL - Dubai Tenancy Lookup",
+    page_icon = "🏠",
+    layout = "wide",
+    initial_sidebar_state = "expanded",
 )
+
+st.markdown('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">', unsafe_allow_html=True)
+
+# Custom colour set
+custom_colours = {
+    "selected_chart_item": "#6ED178", #"#27ae60",
+    "chart_colour": "#3498db",
+    "median": "#c0392b",
+    "mean": "#f39c12",
+    "h3_icon": "#95a5a6"
+}
 
 # URL stored in secret place 😶‍🌫️
 DATA_URL = st.secrets["DATA_URL"]
@@ -22,91 +37,7 @@ def load_data():
     data = data.astype({'ecn': 'int64', 'pid': 'int64', 'annual_amount': 'int64', 'contract_amount': 'int64', 'property_size': 'float64'})
     return data
 
-selected_color = "#31a354"
 
-# Drawing a bar chart with a median line and highlighting the active bar with a different color
-def building_properties_size(building_name, size, usage):
-    df = data[(data['project'] == building_name) & (data['usage'] == usage)].copy()
-    df.reset_index(drop=True, inplace=True)
-
-    bar = alt.Chart(df).mark_bar().encode(
-        x = alt.X('property_size:O',
-                # bin=alt.Bin(extent=[df['property_size'].min(), df['property_size'].max()], step=10),
-                sort = 'ascending',
-                axis = alt.Axis(labelAngle = 0),
-                title = "Property size (sq.m)"
-                ),
-        y = alt.Y('median(annual_amount):Q', title = "Annual price [MEDIAN]"),
-        tooltip = [
-                    alt.Tooltip('median(annual_amount):Q', title = 'Median Annual amount', format = ',.0f'),
-                    alt.Tooltip('property_size:O', title = 'Property size (sq.m)'),
-                    alt.Tooltip('count()', title = 'Number of observations')
-                ],
-        color = alt.condition(
-            alt.datum.property_size == size,
-            alt.value(selected_color), 
-            alt.value('#6baed6'))
-    ).properties(
-                title = alt.TitleParams(
-                    text = f"Property size for building/complex: {building_name}",
-                    fontSize = 16,
-                    color = '#bdbdbd'
-                )
-            )
-
-    rule = alt.Chart(df).mark_rule(color = '#e6550d').encode(
-        y = 'median(annual_amount):Q',
-        size=alt.value(2)
-    )
-
-    count = alt.Chart(df).mark_bar(color = 'grey').encode(
-        x = alt.X('property_size:O', sort = 'ascending'),
-        y = 'count()'
-    )
-
-    st.altair_chart((bar + rule + count), use_container_width=True)
-
-# Drawing a bar chart with a mean line for properties with similar size and highlighting the active bar with a different color
-def building_properties_similar(building_name, size, usage):
-    df = data[(data['project'] == building_name) & (data['usage'] == usage) & (data['property_size'].between(size - 10, size + 10))].copy()
-
-    df.reset_index(drop=True, inplace=True)
-
-    bar = alt.Chart(df).mark_bar(color = 'red').encode(
-        x = alt.X('property_size:O',
-                sort = 'ascending',
-                axis = alt.Axis(labelAngle = 0),
-                title = "Property size (sq.m)"
-                ),
-        y = alt.Y('mean(annual_amount):Q', title = "Annual price [MEAN]"),
-        tooltip = [
-                    alt.Tooltip('mean(annual_amount):Q', title = 'Mean Annual amount', format = ',.0f'),
-                    alt.Tooltip('property_size:O', title = 'Property size (sq.m)'),
-                    alt.Tooltip('count()', title = 'Number of observations')
-                ],
-        color = alt.condition(
-            alt.datum.property_size == size,
-            alt.value(selected_color), # selected value
-            alt.value('#6baed6')) # everything else
-    ).properties(
-                title = alt.TitleParams(
-                    text = f"Prices for similar property size (+/- 10 sq.m) in: {building_name}",
-                    fontSize = 16,
-                    color = '#bdbdbd'
-                )
-            )
-
-    rule = alt.Chart(df).mark_rule(color = '#e6550d').encode(
-        y = 'mean(annual_amount):Q',
-        size=alt.value(2)
-    )
-
-    count = alt.Chart(df).mark_bar(color = 'gray').encode(
-        x = alt.X('property_size:O', sort = 'ascending'),
-        y = 'count()'
-    )
-
-    st.altair_chart((bar + rule + count), use_container_width = True)
 
 # Adding a logo to the top left corner of the sidebar and hiding the menu and footer text
 def add_logo():
@@ -114,7 +45,7 @@ def add_logo():
         """
         <style>
             [class="css-6qob1r e1fqkh3o3"] {
-                background-image: url(https://icons.getbootstrap.com/assets/icons/buildings.svg);
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='cornflowerblue' class='bi bi-buildings' viewBox='0 0 16 16'%3E%3Cpath d='M14.763.075A.5.5 0 0 1 15 .5v15a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5V14h-1v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V10a.5.5 0 0 1 .342-.474L6 7.64V4.5a.5.5 0 0 1 .276-.447l8-4a.5.5 0 0 1 .487.022ZM6 8.694 1 10.36V15h5V8.694ZM7 15h2v-1.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5V15h2V1.309l-7 3.5V15Z'/%3E%3Cpath d='M2 11h1v1H2v-1Zm2 0h1v1H4v-1Zm-2 2h1v1H2v-1Zm2 0h1v1H4v-1Zm4-4h1v1H8V9Zm2 0h1v1h-1V9Zm-2 2h1v1H8v-1Zm2 0h1v1h-1v-1Zm2-2h1v1h-1V9Zm0 2h1v1h-1v-1ZM8 7h1v1H8V7Zm2 0h1v1h-1V7Zm2 0h1v1h-1V7ZM8 5h1v1H8V5Zm2 0h1v1h-1V5Zm2 0h1v1h-1V5Zm0-2h1v1h-1V3Z'/%3E%3C/svg%3E");
                 background-repeat: no-repeat;
                 background-size: 7em;
                 padding-top: 50px;
@@ -137,10 +68,110 @@ def add_logo():
         unsafe_allow_html=True,
     )
 
+
+# Drawing measure mean/median rule
+def rule_onchart(df, column, measure):
+    rule = alt.Chart(df).mark_rule(color = custom_colours[measure]).encode(
+        y = f"{measure}({column}):Q",
+        size = alt.value(2),
+        tooltip = [
+            alt.Tooltip(f"{measure}({column}):Q", title=f"{measure.capitalize()}", format = ',.0f')
+        ]
+    )
+    return rule
+
+
+# Drawing a bar chart with a median line and highlighting the active bar with a different colour
+def building_properties_size(building_name, size, usage):
+    df = data[(data['project'] == building_name) & (data['usage'] == usage)].copy()
+    df.reset_index(drop=True, inplace=True)
+
+    median_str = '{:,.0f}'.format(np.median(df['annual_amount']))
+    mean_str = '{:,.0f}'.format(np.mean(df['annual_amount']))
+
+    st.markdown(f"##### Property size for building/complex: {building_name}")
+    st.caption(f"""
+        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['median']};"></i> Median {median_str}&nbsp;|&nbsp;
+        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['mean']};"></i> Mean {mean_str}
+    """, unsafe_allow_html=True)
+
+    bar = alt.Chart(df).mark_bar().encode(
+        x = alt.X('property_size:O',
+                # bin=alt.Bin(extent=[df['property_size'].min(), df['property_size'].max()], step=10),
+                sort = 'ascending',
+                axis = alt.Axis(labelAngle = 0),
+                title = "Property size (sq.m)"
+                ),
+        y = alt.Y('median(annual_amount):Q', title = "Annual price [MEDIAN]"),
+        tooltip = [
+                    alt.Tooltip('median(annual_amount):Q', title = 'Median Annual amount', format = ',.0f'),
+                    alt.Tooltip('property_size:O', title = 'Property size (sq.m)'),
+                    alt.Tooltip('count()', title = 'Number of observations')
+                ],
+        color = alt.condition(
+            alt.datum.property_size == size,
+            alt.value(custom_colours['selected_chart_item']), 
+            alt.value(custom_colours['chart_colour']))
+    )
+
+    count = alt.Chart(df).mark_bar(color = 'grey').encode(
+        x = alt.X('property_size:O', sort = 'ascending'),
+        y = 'count()'
+    )
+
+    st.altair_chart((bar 
+                     + rule_onchart(df, 'annual_amount', 'median') 
+                     + rule_onchart(df, 'annual_amount', 'mean') 
+                     + count), use_container_width=True)
+
+
+# Drawing a bar chart with a mean line for properties with similar size and highlighting the active bar with a different colour
+def building_properties_similar(building_name, size, usage):
+    df = data[(data['project'] == building_name) & (data['usage'] == usage) & (data['property_size'].between(size - 10, size + 10))].copy()
+    df.reset_index(drop=True, inplace=True)
+
+    median_str = '{:,.0f}'.format(np.median(df['annual_amount']))
+    mean_str = '{:,.0f}'.format(np.mean(df['annual_amount']))
+
+    st.markdown(f"##### Prices for similar property size (+/- 10 sq.m) in: {building_name}")
+    st.caption(f"""
+        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['median']};"></i> Median {median_str}&nbsp;|&nbsp;
+        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['mean']};"></i> Mean {mean_str}
+    """, unsafe_allow_html=True)
+
+    bar = alt.Chart(df).mark_bar().encode(
+        x = alt.X('property_size:O',
+                sort = 'ascending',
+                axis = alt.Axis(labelAngle = 0),
+                title = "Property size (sq.m)"
+                ),
+        y = alt.Y('mean(annual_amount):Q', title = "Annual price [MEAN]"),
+        tooltip = [
+                    alt.Tooltip('mean(annual_amount):Q', title = 'Mean Annual amount', format = ',.0f'),
+                    alt.Tooltip('property_size:O', title = 'Property size (sq.m)'),
+                    alt.Tooltip('count()', title = 'Number of observations')
+                ],
+        color = alt.condition(
+            alt.datum.property_size == size,
+            alt.value(custom_colours['selected_chart_item']), 
+            alt.value(custom_colours['chart_colour']))
+     )
+
+    count = alt.Chart(df).mark_bar(color = 'gray').encode(
+        x = alt.X('property_size:O', sort = 'ascending'),
+        y = 'count()'
+    )
+
+    st.altair_chart((bar 
+                     + rule_onchart(df, 'annual_amount', 'mean') 
+                     + rule_onchart(df, 'annual_amount', 'median') 
+                     + count), use_container_width = True)
+    
+
 add_logo()
 
 # Main page
-st.title("Dubai Tenancy Lookup")
+st.markdown(f'# <i class="bi bi-buildings" style="font-size: 3rem; color: cornflowerblue;"></i> Dubai Tenancy Lookup', unsafe_allow_html=True)
 st.markdown("#### Access information about your tenancy contract and rented property")
 st.markdown("""
             After entering your Ejari number, you'll be able to see:
@@ -167,7 +198,7 @@ with st.expander("⚠️ Disclaimer"):
 
 # Sidebar options
 st.sidebar.title("Navigation")
-st.sidebar.caption("App updated: 22 March 2023")
+st.sidebar.caption(f"App updated: {current_date}")
 
 ecn_field, ecn_message = st.columns([1.5,3])
 
@@ -229,14 +260,14 @@ if ecn != '' and is_there(ecn,"ecn"):
     st.markdown(f"#### Data found for Ejari: **:green[{ecn}]**")
     
     # Display the table with ECN avalible in DB
-    ecn_data.reset_index(drop=True, inplace=True)
+    ecn_data.reset_index(drop = True, inplace = True)
     ecn_data_columns = ['ecn', 'registration_date', 'start_date', 'end_date', 'pid', 'version', 'area', 'contract_amount', 'annual_amount','property_size', 'project']
-    st.dataframe(ecn_data[ecn_data_columns].style.format(precision=2, thousands=''), use_container_width=True)
+    st.dataframe(ecn_data[ecn_data_columns].style.format(precision = 2, thousands = ''), use_container_width = True)
 
     st.markdown("___")
 
     # Displaying relevant information such as rented apartments, property size, building/complex, etc.
-    st.markdown("#### Property")
+    st.markdown(f'#### <i class="bi bi-building" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Property', unsafe_allow_html=True)
     pid_title_1, pid_title_2, pid_title_3, pid_title_4, pid_title_5 = st.columns([1,1,1,1,0.5])
 
     with pid_title_1:
@@ -271,51 +302,52 @@ if ecn != '' and is_there(ecn,"ecn"):
             else:
                 st.markdown(f"{property_dict[key]['property_size']}")
         with pid_5:
-            btn_showchart = st.button("show chart", key=f"PID_{key}")
+            btn_showchart = st.button(f'show chart', key=f"PID_{key}")
 
 
     def pid_prices(pid):
         """Property renting prices chart"""
 
         pid_data = data[data['pid'] == pid]
-        st.markdown(f"#### Renting prices for PID: :green[{pid}]")
-
+        st.markdown(f'#### <i class="bi bi-bar-chart" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Renting prices for PID: :green[{pid}]', unsafe_allow_html=True)
+        
         pidchart_title = f"Property renting prices"
-        pid_altairchart = alt.Chart(pid_data).mark_line(point=alt.OverlayMarkDef(size=100, filled=False, fill="white")).encode(
-            alt.X('start_date:T', title='Renting start dates'),
-            alt.Y('annual_amount:Q', title='Annual amount'),
+        pid_altairchart = alt.Chart(pid_data).mark_line(point = alt.OverlayMarkDef(size = 100, filled = False, fill = "white")).encode(
+            alt.X('start_date:T', title = 'Renting start dates'),
+            alt.Y('annual_amount:Q', title = 'Annual amount'),
             tooltip=[
-                alt.Tooltip('start_date:T', title='Start ranting date'),
-                alt.Tooltip('end_date:T', title='End ranting date'),
-                alt.Tooltip('annual_amount:Q', title='Annual amount', format=',.0f'),
-                alt.Tooltip('contract_amount:Q', title='Contract amount', format=',.0f'),
-                alt.Tooltip('version', title='New/Renewed'),
+                alt.Tooltip('start_date:T', title = 'Start ranting date'),
+                alt.Tooltip('end_date:T', title = 'End ranting date'),
+                alt.Tooltip('annual_amount:Q', title = 'Annual amount', format = ',.0f'),
+                alt.Tooltip('contract_amount:Q', title = 'Contract amount', format = ',.0f'),
+                alt.Tooltip('version', title = 'New/Renewed'),
             ]
         ).properties(
-            title=alt.TitleParams(
-                text=pidchart_title,
-                fontSize=16,
-                color='gray'
+            title = alt.TitleParams(
+                text = pidchart_title,
+                fontSize = 16,
+                color = 'gray'
             )
         )
 
         text = pid_altairchart.mark_text(
-            align="left",
-            baseline="middle",
+            align = "left",
+            baseline = "middle",
             fontSize = 13,
             dx = 8,
             dy = -15,
-            color='#fff'
-        ).encode(text="annual_amount:Q")
+            color = '#fff'
+        ).encode(text = "annual_amount:Q")
 
-        st.altair_chart(pid_altairchart + text, use_container_width=True)
+        st.altair_chart(pid_altairchart + text, use_container_width = True)
+
 
     for item in st.session_state.items():
         if item[1]:
             state_id = int(item[0][4:])
             pid_prices(state_id)
             if property_dict[state_id]['project'] != "Missing Data":
-                st.markdown("#### Building's Information")
+                st.markdown(f'#### <i class="bi bi-building-exclamation" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Building\'s Information', unsafe_allow_html=True)
                 building_properties_size(property_dict[state_id]['project'],
                                          property_dict[state_id]['property_size'],
                                          property_dict[state_id]['usage'])

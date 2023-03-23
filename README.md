@@ -2,9 +2,9 @@
 ### Access information about your tenancy contract and rented property in Dubai, UAE
 
 <p align="center">
-  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/2023-03-22_app_UI.png?raw=true" alt="App UI on 22 March 2023"/>
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/2023-03-23_app_UI.png?raw=true" alt="App UI on 22 March 2023"/>
   <br>
-  <em>User interfase of the app hosted on Streamlit on 22 March 2023</em>
+  <em>User interfase of the app hosted on Streamlit on 23 March 2023</em>
 </p>
 
 After entering your `Ejari` number, you'll be able to see:

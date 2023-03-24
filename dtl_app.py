@@ -17,13 +17,35 @@ st.set_page_config(
 st.markdown('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">', unsafe_allow_html=True)
 
 # Custom colour set
-custom_colours = {
-    "selected_chart_item": "#6ED178", #"#27ae60",
-    "chart_colour": "#3498db",
-    "median": "#c0392b",
-    "mean": "#f39c12",
-    "h3_icon": "#95a5a6"
+#  https://flatuicolors.com/palette/defo
+colours = {
+    "Turquoise": "#1abc9c",  # greenish blue
+    "Emerald": "#2ecc71",  # bright green
+    "Peter River": "#3498db",  # light blueish
+    "Amethyst": "#9b59b6",  # purple
+    "Wet Asphalt": "#34495e",  # dark grayish blue
+    "Green Sea": "#16a085",  # blueish green
+    "Nephritis": "#27ae60",  # bright greenish blue
+    "Belize Hole": "#2980b9",  # darker blue than Peter River
+    "Wisteria": "#8e44ad",  # purplish blue
+    "Midnight Blue": "#2c3e50",  # dark blue
+    "Sun Flower": "#f1c40f",  # bright yellow
+    "Carrot": "#e67e22",  # orange
+    "Alizarin": "#e74c3c",  # dark red
+    "Clouds": "#ecf0f1",  # light gray
+    "Concrete": "#95a5a6",  # gray
+    "Orange": "#f39c12",  # orange
+    "Pumpkin": "#d35400",  # orangey red
+    "Pomegranate": "#c0392b",  # dark red
+    "Silver": "#bdc3c7",  # light grayish blue
+    "Asbestos": "#7f8c8d",  # dark gray
+    "Cornflower Blue": "#6495ED",
 }
+
+# Making an icon, that should help to save some space in code.
+def bi_icon(name, size, colour):
+    return f"<i class='bi bi-{name}' style='font-size: {size}rem; color: {colour};'></i>"
+
 
 # URL stored in secret place 😶‍🌫️
 DATA_URL = st.secrets["DATA_URL"]
@@ -36,7 +58,6 @@ def load_data():
     data.rename(lowercase, axis = 'columns', inplace = True)
     data = data.astype({'ecn': 'int64', 'pid': 'int64', 'annual_amount': 'int64', 'contract_amount': 'int64', 'property_size': 'float64'})
     return data
-
 
 
 # Adding a logo to the top left corner of the sidebar and hiding the menu and footer text
@@ -60,6 +81,11 @@ def add_logo():
             #     position: relative;
             #     top: 100px;
             # }
+
+            # Hide stepper buttons + / - for number input filed
+            # [class="css-76z9jo e1jwn65y2"]{
+            #     display: none;
+            # }
             
             # #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
@@ -71,7 +97,7 @@ def add_logo():
 
 # Drawing measure mean/median rule
 def rule_onchart(df, column, measure):
-    rule = alt.Chart(df).mark_rule(color = custom_colours[measure]).encode(
+    rule = alt.Chart(df).mark_rule(color = colours['Pomegranate'] if measure == 'median' else colours['Orange']).encode(
         y = f"{measure}({column}):Q",
         size = alt.value(2),
         tooltip = [
@@ -90,10 +116,7 @@ def building_properties_size(building_name, size, usage):
     mean_str = '{:,.0f}'.format(np.mean(df['annual_amount']))
 
     st.markdown(f"##### Property size for building/complex: {building_name}")
-    st.caption(f"""
-        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['median']};"></i> Median {median_str}&nbsp;|&nbsp;
-        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['mean']};"></i> Mean {mean_str}
-    """, unsafe_allow_html=True)
+    st.caption(f" {bi_icon('square-fill', 1, colours['Pomegranate'])} Median {median_str} &nbsp;|&nbsp; {bi_icon('square-fill', 1, colours['Orange'])} Mean {mean_str}", unsafe_allow_html=True)
 
     bar = alt.Chart(df).mark_bar().encode(
         x = alt.X('property_size:O',
@@ -110,8 +133,8 @@ def building_properties_size(building_name, size, usage):
                 ],
         color = alt.condition(
             alt.datum.property_size == size,
-            alt.value(custom_colours['selected_chart_item']), 
-            alt.value(custom_colours['chart_colour']))
+            alt.value(colours['Nephritis']), 
+            alt.value(colours['Peter River']))
     )
 
     count = alt.Chart(df).mark_bar(color = 'grey').encode(
@@ -134,10 +157,7 @@ def building_properties_similar(building_name, size, usage):
     mean_str = '{:,.0f}'.format(np.mean(df['annual_amount']))
 
     st.markdown(f"##### Prices for similar property size (+/- 10 sq.m) in: {building_name}")
-    st.caption(f"""
-        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['median']};"></i> Median {median_str}&nbsp;|&nbsp;
-        <i class="bi bi-square-fill" style="font-size: 1rem; color: {custom_colours['mean']};"></i> Mean {mean_str}
-    """, unsafe_allow_html=True)
+    st.caption(f" {bi_icon('square-fill', 1, colours['Pomegranate'])} Median {median_str} &nbsp;|&nbsp; {bi_icon('square-fill', 1, colours['Orange'])} Mean {mean_str}", unsafe_allow_html=True)
 
     bar = alt.Chart(df).mark_bar().encode(
         x = alt.X('property_size:O',
@@ -153,8 +173,8 @@ def building_properties_similar(building_name, size, usage):
                 ],
         color = alt.condition(
             alt.datum.property_size == size,
-            alt.value(custom_colours['selected_chart_item']), 
-            alt.value(custom_colours['chart_colour']))
+            alt.value(colours['Nephritis']), 
+            alt.value(colours['Peter River']))
      )
 
     count = alt.Chart(df).mark_bar(color = 'gray').encode(
@@ -171,7 +191,7 @@ def building_properties_similar(building_name, size, usage):
 add_logo()
 
 # Main page
-st.markdown(f'# <i class="bi bi-buildings" style="font-size: 3rem; color: cornflowerblue;"></i> Dubai Tenancy Lookup', unsafe_allow_html=True)
+st.markdown(f"# {bi_icon('buildings', 3, colours['Cornflower Blue'])} Dubai Tenancy Lookup", unsafe_allow_html=True)
 st.markdown("#### Access information about your tenancy contract and rented property")
 st.markdown("""
             After entering your Ejari number, you'll be able to see:
@@ -219,8 +239,6 @@ load_status = st.sidebar.warning('Wait, please. Loading all data and caching it 
 data = load_data()
 load_status.success('All data has been loaded successfully and cached!')
 
-print(data.info())
-
 st.sidebar.markdown("#### Clear all cache!")
 with st.sidebar.expander("🧹 Clear all cache!"):
     if st.button("clear and reload"):
@@ -267,7 +285,7 @@ if ecn != '' and is_there(ecn,"ecn"):
     st.markdown("___")
 
     # Displaying relevant information such as rented apartments, property size, building/complex, etc.
-    st.markdown(f'#### <i class="bi bi-building" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Property', unsafe_allow_html=True)
+    st.markdown(f"#### {bi_icon('building', 1.5, colours['Concrete'])} Property", unsafe_allow_html=True)
     pid_title_1, pid_title_2, pid_title_3, pid_title_4, pid_title_5 = st.columns([1,1,1,1,0.5])
 
     with pid_title_1:
@@ -309,7 +327,7 @@ if ecn != '' and is_there(ecn,"ecn"):
         """Property renting prices chart"""
 
         pid_data = data[data['pid'] == pid]
-        st.markdown(f'#### <i class="bi bi-bar-chart" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Renting prices for PID: :green[{pid}]', unsafe_allow_html=True)
+        st.markdown(f"#### {bi_icon('bar-chart', 1.5, colours['Concrete'])} Renting prices for PID: :green[{pid}]", unsafe_allow_html=True)
         
         pidchart_title = f"Property renting prices"
         pid_altairchart = alt.Chart(pid_data).mark_line(point = alt.OverlayMarkDef(size = 100, filled = False, fill = "white")).encode(
@@ -347,7 +365,7 @@ if ecn != '' and is_there(ecn,"ecn"):
             state_id = int(item[0][4:])
             pid_prices(state_id)
             if property_dict[state_id]['project'] != "Missing Data":
-                st.markdown(f'#### <i class="bi bi-building-exclamation" style="font-size: 1.5rem; color: {custom_colours["h3_icon"]};"></i> Building\'s Information', unsafe_allow_html=True)
+                st.markdown(f"#### {bi_icon('building-exclamation', 1.5, colours['Concrete'])} Building's Information", unsafe_allow_html=True)
                 building_properties_size(property_dict[state_id]['project'],
                                          property_dict[state_id]['property_size'],
                                          property_dict[state_id]['usage'])

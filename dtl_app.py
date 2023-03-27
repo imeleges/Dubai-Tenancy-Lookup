@@ -1,11 +1,13 @@
 import pandas as pd
 import streamlit as st
 import altair as alt
+import pydeck as pdk
 import numpy as np
-from datetime import datetime
+import datetime
+from dateutil.relativedelta import relativedelta
 
 # Get the current date and time in format as "23 Mar 2023"
-current_date = datetime.now().strftime("%d %b %Y")
+# current_date = datetime.datetime.now().strftime("%d %b %Y")
 
 st.set_page_config(
     page_title = "DTL - Dubai Tenancy Lookup",
@@ -16,8 +18,7 @@ st.set_page_config(
 
 st.markdown('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">', unsafe_allow_html=True)
 
-# Custom colour set
-#  https://flatuicolors.com/palette/defo
+# Custom colour set based on https://flatuicolors.com/palette/defo
 colours = {
     "Turquoise": "#1abc9c",  # greenish blue
     "Emerald": "#2ecc71",  # bright green
@@ -46,19 +47,32 @@ colours = {
 def bi_icon(name, size, colour):
     return f"<i class='bi bi-{name}' style='font-size: {size}rem; color: {colour};'></i>"
 
-
 # URL stored in secret place 😶‍🌫️
 DATA_URL = st.secrets["DATA_URL"]
+DATA_URL_PROJECTS = st.secrets["DATA_URL_PROJECTS"]
 
 # Loading data and caching it
 @st.cache_data
 def load_data():
-    data = pd.read_csv(DATA_URL, sep = ';', parse_dates = ["registration_date", "start_date","end_date"])
+    data = pd.read_csv(DATA_URL, sep = ',', parse_dates = ["registration_date", "start_date","end_date"])
     lowercase = lambda x: str(x).lower()
     data.rename(lowercase, axis = 'columns', inplace = True)
-    data = data.astype({'ecn': 'int64', 'pid': 'int64', 'annual_amount': 'int64', 'contract_amount': 'int64', 'property_size': 'float64'})
+    
+    data = data.astype({'ecn': 'int64',
+                        'pid': 'int64', 
+                        'annual_amount': 'int64', 
+                        'contract_amount': 'int64', 
+                        'property_size': 'float64'
+                        })
     return data
 
+@st.cache_data
+def load_projects():
+    projects = pd.read_csv(DATA_URL_PROJECTS, sep = ',', parse_dates = ["start_date", "completion_date"])
+    lowercase = lambda x: str(x).lower()
+    projects.rename(lowercase, axis = 'columns', inplace = True)
+
+    return projects
 
 # Adding a logo to the top left corner of the sidebar and hiding the menu and footer text
 def add_logo():
@@ -82,18 +96,12 @@ def add_logo():
             #     top: 100px;
             # }
 
-            # Hide stepper buttons + / - for number input filed
-            # [class="css-76z9jo e1jwn65y2"]{
-            #     display: none;
-            # }
-            
-            # #MainMenu {visibility: hidden;}
+            #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
         </style>
         """,
         unsafe_allow_html=True,
     )
-
 
 # Drawing measure mean/median rule
 def rule_onchart(df, column, measure):
@@ -105,7 +113,6 @@ def rule_onchart(df, column, measure):
         ]
     )
     return rule
-
 
 # Drawing a bar chart with a median line and highlighting the active bar with a different colour
 def building_properties_size(building_name, size, usage):
@@ -147,7 +154,6 @@ def building_properties_size(building_name, size, usage):
                      + rule_onchart(df, 'annual_amount', 'mean') 
                      + count), use_container_width=True)
 
-
 # Drawing a bar chart with a mean line for properties with similar size and highlighting the active bar with a different colour
 def building_properties_similar(building_name, size, usage):
     df = data[(data['project'] == building_name) & (data['usage'] == usage) & (data['property_size'].between(size - 10, size + 10))].copy()
@@ -187,6 +193,41 @@ def building_properties_similar(building_name, size, usage):
                      + rule_onchart(df, 'annual_amount', 'median') 
                      + count), use_container_width = True)
     
+# Property renting prices chart
+def pid_prices(pid):
+    """Property renting prices chart"""
+
+    pid_data = data[data['pid'] == pid]
+    
+    pidchart_title = f"Property renting prices for all avalible period"
+    pid_altairchart = alt.Chart(pid_data).mark_line(point = alt.OverlayMarkDef(size = 100, filled = False, fill = "white")).encode(
+        alt.X('start_date:T', title = 'Renting start dates'),
+        alt.Y('annual_amount:Q', title = 'Annual amount'),
+        tooltip=[
+            alt.Tooltip('start_date:T', title = 'Start ranting date'),
+            alt.Tooltip('end_date:T', title = 'End ranting date'),
+            alt.Tooltip('annual_amount:Q', title = 'Annual amount', format = ',.0f'),
+            alt.Tooltip('contract_amount:Q', title = 'Contract amount', format = ',.0f'),
+            alt.Tooltip('version', title = 'New/Renewed'),
+        ]
+    ).properties(
+        title = alt.TitleParams(
+            text = pidchart_title,
+            fontSize = 16,
+            color = 'gray'
+        )
+    )
+
+    text = pid_altairchart.mark_text(
+        align = "left",
+        baseline = "middle",
+        fontSize = 13,
+        dx = 8,
+        dy = -15,
+        color = '#fff'
+    ).encode(text = "annual_amount:Q")
+
+    st.altair_chart(pid_altairchart + text, use_container_width = True)
 
 add_logo()
 
@@ -218,18 +259,22 @@ with st.expander("⚠️ Disclaimer"):
 
 # Sidebar options
 st.sidebar.title("Navigation")
-st.sidebar.caption(f"App updated: {current_date}")
+st.sidebar.caption(f"App updated: 27 March 2023")
 
 ecn_field, ecn_message = st.columns([1.5,3])
 
+if 'ecn' not in st.session_state:
+    st.session_state['ecn'] = ''
+
 with ecn_field:
-    ecn = st.text_input('Enter your Ejari number', placeholder='000000000000000')
-    if ecn != '':
+    entered_ecn = st.text_input('Enter your Ejari number', placeholder='000000000000000')
+    if entered_ecn != '':
         try:
-            ecn = int(ecn)  # try to convert the variable to an integer
+            st.session_state['ecn'] = int(entered_ecn)  # try to convert the variable to an integer
         except ValueError:  # if it's not convertible, catch the ValueError exception
-            st.markdown(f"Oh no 😱 **:red[{ecn}]** is NOT a number")
-            ecn = ''
+            st.markdown(f"Oh no 😱 **:red[{entered_ecn}]** is NOT a number")
+            st.session_state['ecn'] = ''
+
 with ecn_message:
     st.write("What is Ejari?")
     st.write("It's a unique ID number assigned to a registered tenancy contract in Dubai, and it consists of 15 digits.")
@@ -237,7 +282,9 @@ with ecn_message:
 
 load_status = st.sidebar.warning('Wait, please. Loading all data and caching it for a quicker access later.')
 data = load_data()
+projects = load_projects()
 load_status.success('All data has been loaded successfully and cached!')
+
 
 st.sidebar.markdown("#### Clear all cache!")
 with st.sidebar.expander("🧹 Clear all cache!"):
@@ -252,127 +299,148 @@ def is_there(number,column):
         st.error(f"😢 Sorry, but Ejari number **:red[{number}]** is not found. ")
         return False
 
-if ecn != '' and is_there(ecn,"ecn"):
+
+def period_between_dates(dataframe, start_date_column, end_date_column):
+    # get the minimum and maximum dates from the specified columns
+    min_date = dataframe[start_date_column].min()
+    max_date = dataframe[end_date_column].max()
+
+    # if the maximum date is in the future, use the current date instead
+    if max_date > datetime.datetime.now():
+        max_date = datetime.datetime.now()
+
+    # calculate the period between the minimum and maximum dates using dateutil.relativedelta
+    delta = relativedelta(max_date, min_date)
+    years = delta.years
+    months = delta.months
+    days = delta.days
+
+    # return a formatted string with the period between the minimum and maximum dates
+    return f"{years} years {months} months {days} days"
+
+ecn_exist = st.session_state['ecn'] != '' and is_there(st.session_state['ecn'],"ecn")
+
+if ecn_exist:
     # Gathering all relevant data
-    ecn_data = data[data['ecn'] == ecn].copy()
+    ecn_data = data[data['ecn'] == st.session_state['ecn']].copy()
     ecn_data.fillna("Missing Data", inplace = True)
-    property_dict = {}
+    ecn_data = ecn_data.reset_index(drop=True)
 
-    pids = ecn_data['pid'].to_list()
-    areas = ecn_data['area'].to_list()
-    property_sizes = ecn_data['property_size'].to_list()
-    usage = ecn_data['usage'].to_list()
-    projects = ecn_data['project'].to_list()
+    property_dict = {
+        "start_date": ecn_data['start_date'].min().strftime('%d %b %Y'),
+        "end_date": ecn_data['end_date'].max().strftime('%d %b %Y'),
+        "pid": ecn_data['pid'].iloc[0],
+        "area": ecn_data['area'].iloc[0],
+        "property_size": ecn_data['property_size'].iloc[0],
+        "usage": f"{ecn_data['usage'].iloc[0]}",
+        "project": f"{ecn_data['project'].iloc[0]}",
+        "property_type": f"{ecn_data['property_type'].iloc[0]}",
+        "property_subtype": f"{ecn_data['property_subtype'].iloc[0]}",
+        "nearest_metro": f"{ecn_data['nearest_metro'].iloc[0]}",
+        "nearest_mall": f"{ecn_data['nearest_mall'].iloc[0]}",
+    }
 
-    for i in range(len(pids)):
-        property_dict.update({
-            pids[i]: {"area": areas[i],
-                "property_size": property_sizes[i],
-                "project": projects[i],
-                "usage": usage[i]
-                }
-            })
-    
-    
     # Building up the layout
-    st.markdown(f"#### Data found for Ejari: **:green[{ecn}]**")
+    st.markdown(f"#### Data found for Ejari: **:green[{st.session_state['ecn']}]**")
     
     # Display the table with ECN avalible in DB
     ecn_data.reset_index(drop = True, inplace = True)
-    ecn_data_columns = ['ecn', 'registration_date', 'start_date', 'end_date', 'pid', 'version', 'area', 'contract_amount', 'annual_amount','property_size', 'project']
-    st.dataframe(ecn_data[ecn_data_columns].style.format(precision = 2, thousands = ''), use_container_width = True)
-
+    # st.dataframe(ecn_data.style.format(precision = 2, thousands = ''), use_container_width = True)
     st.markdown("___")
 
     # Displaying relevant information such as rented apartments, property size, building/complex, etc.
-    st.markdown(f"#### {bi_icon('building', 1.5, colours['Concrete'])} Property", unsafe_allow_html=True)
-    pid_title_1, pid_title_2, pid_title_3, pid_title_4, pid_title_5 = st.columns([1,1,1,1,0.5])
+    st.markdown(f"#### {bi_icon('card-checklist', 1.5, colours['Concrete'])} Property overview", unsafe_allow_html=True)
 
-    with pid_title_1:
-        st.markdown(f"**Property ID**")
-    with pid_title_2:
-        st.markdown(f"**Area / Neighbourhood**")
-    with pid_title_3:
-        st.markdown(f"**Building / Complex**")
-    with pid_title_4:
+    property_ttl_1, property_ttl_2, property_ttl_3, property_ttl_4, property_ttl_5 = st.columns([1.5,1,1,1,1])
+
+    def if_missing(column):
+        if property_dict[column] == "Missing Data":
+            st.markdown(f":red[{property_dict[column]}]")
+        else:
+            st.markdown(f"{property_dict[column]}")
+
+    with property_ttl_1:
+        st.markdown(f"**Renting dates**")
+        st.markdown(f"""{bi_icon('dot', 1, colours['Emerald'])} {property_dict['start_date']} 
+                        {bi_icon('dot', 1, colours['Alizarin'])} {property_dict['end_date']}  
+                    """, unsafe_allow_html=True) 
+    with property_ttl_2:
+        st.markdown(f"**Usage**")
+        if_missing("usage")
+    with property_ttl_3:
+        st.markdown(f"**Type**")
+        if_missing("property_type")
+    with property_ttl_4:
+        st.markdown(f"**Subtype**")
+        if_missing("property_subtype")
+    with property_ttl_5:
         st.markdown(f"**Property Size (sq.m)**")
-    with pid_title_5:
-        st.markdown("**Price Chart**")
+        if_missing("property_size")
+    st.markdown("")
 
-    for key in property_dict:
-        pid_1, pid_2, pid_3, pid_4, pid_5 = st.columns([1,1,1,1,0.5])
+if ecn_exist:
+    st.markdown(f"#### {bi_icon('bar-chart', 1.5, colours['Concrete'])} Property renting prices", unsafe_allow_html=True)
+    pid_prices(property_dict['pid'])
 
-        with pid_1:
-            st.markdown(f":green[{key}]")
-        with pid_2:
-            if property_dict[key]['area'] == "Missing Data":
-                st.markdown(f":red[{property_dict[key]['area']}]")
-            else:
-                st.markdown(f"{property_dict[key]['area']}")
-        with pid_3:
-            if property_dict[key]['project'] == "Missing Data":
-                st.markdown(f":red[{property_dict[key]['project']}]")
-            else:
-                st.markdown(f"{property_dict[key]['project']}")
-        with pid_4:
-            if property_dict[key]['property_size'] == "Missing Data":
-                st.markdown(f":red[{property_dict[key]['property_size']}]")
-            else:
-                st.markdown(f"{property_dict[key]['property_size']}")
-        with pid_5:
-            btn_showchart = st.button(f'show chart', key=f"PID_{key}")
+# Building
+if ecn_exist and property_dict['project'] != "Missing Data":
+    st.markdown(f"#### {bi_icon('info-square', 1.5, colours['Concrete'])} Building's Information for {property_dict['project']}", unsafe_allow_html=True)
 
+    current_project = projects[projects['project_name'] == property_dict['project']].copy()
 
-    def pid_prices(pid):
-        """Property renting prices chart"""
-
-        pid_data = data[data['pid'] == pid]
-        st.markdown(f"#### {bi_icon('bar-chart', 1.5, colours['Concrete'])} Renting prices for PID: :green[{pid}]", unsafe_allow_html=True)
+    project_dict = {
+        "project_name": current_project['project_name'].iloc[0],
+        "developer_name": current_project['developer_name'].iloc[0],
+        "start_date": current_project['start_date'].iloc[0].strftime('%d %b %Y'),
+        "completion_date": current_project['completion_date'].iloc[0].strftime('%d %b %Y'),
+        "area": current_project['area'].iloc[0],
+        "total_units": f"{current_project['total_units'].fillna(0).astype(int).iloc[0]}",
+        "lat": f"{float(current_project['lat'].iloc[0])}",
+        "long": f"{float(current_project['long'].iloc[0])}",
+    }
+     
+    # Description & Map
+    bld_decription, bld_map = st.columns([1,2])
+    with bld_decription: 
+        st.markdown(f"##### {bi_icon('building', 1, colours['Concrete'])} **Building description**", unsafe_allow_html=True)
+        st.markdown(f"""
+            Developer: **{project_dict['developer_name']}**\n
+            Construction dates: **{project_dict['start_date']} - {project_dict['completion_date']}**\n
+            Total units: **{project_dict['total_units'] if project_dict['total_units'] != 0 else ":red[Missing Data]"}**\n
+            Transport station: **{property_dict['nearest_metro']}**\n
+            Shopping centre: **{property_dict['nearest_mall']}**\n
+            Area: **{project_dict['area'] if project_dict['area'] != 0 else ":red[Missing Data]"}**\n
+            """ , unsafe_allow_html=True)
+    with bld_map:
+        def map_location(lat, long):
+            st.pydeck_chart(pdk.Deck(
+                map_style = 'mapbox://styles/mapbox/dark-v11',
+                initial_view_state = pdk.ViewState(
+                    latitude = 25.0813566,
+                    longitude = 55.1364633,
+                    zoom = 12.5,
+                    height = 300,
+                    # width = 300
+                ),
+                layers=[
+                    pdk.Layer(
+                        'ScatterplotLayer',
+                        data = current_project,
+                        get_position = '[long, lat]',
+                        get_color = '[39, 174, 96, 160]',
+                        get_radius = 100,
+                        auto_highlight = True
+                    ),
+                ],
+            ))
         
-        pidchart_title = f"Property renting prices"
-        pid_altairchart = alt.Chart(pid_data).mark_line(point = alt.OverlayMarkDef(size = 100, filled = False, fill = "white")).encode(
-            alt.X('start_date:T', title = 'Renting start dates'),
-            alt.Y('annual_amount:Q', title = 'Annual amount'),
-            tooltip=[
-                alt.Tooltip('start_date:T', title = 'Start ranting date'),
-                alt.Tooltip('end_date:T', title = 'End ranting date'),
-                alt.Tooltip('annual_amount:Q', title = 'Annual amount', format = ',.0f'),
-                alt.Tooltip('contract_amount:Q', title = 'Contract amount', format = ',.0f'),
-                alt.Tooltip('version', title = 'New/Renewed'),
-            ]
-        ).properties(
-            title = alt.TitleParams(
-                text = pidchart_title,
-                fontSize = 16,
-                color = 'gray'
-            )
-        )
-
-        text = pid_altairchart.mark_text(
-            align = "left",
-            baseline = "middle",
-            fontSize = 13,
-            dx = 8,
-            dy = -15,
-            color = '#fff'
-        ).encode(text = "annual_amount:Q")
-
-        st.altair_chart(pid_altairchart + text, use_container_width = True)
+        map_location(project_dict['lat'], project_dict['long'])
 
 
-    for item in st.session_state.items():
-        if item[1]:
-            state_id = int(item[0][4:])
-            pid_prices(state_id)
-            if property_dict[state_id]['project'] != "Missing Data":
-                st.markdown(f"#### {bi_icon('building-exclamation', 1.5, colours['Concrete'])} Building's Information", unsafe_allow_html=True)
-                building_properties_size(property_dict[state_id]['project'],
-                                         property_dict[state_id]['property_size'],
-                                         property_dict[state_id]['usage'])
-                building_properties_similar(property_dict[state_id]['project'],
-                                         property_dict[state_id]['property_size'],
-                                         property_dict[state_id]['usage'])
-            else:
-                st.markdown(f"Sorry, but building's :red[info is missing] for the property :green[{state_id}]. There's nothing to show 😢")
+if ecn_exist and property_dict['project'] != "Missing Data":
+    building_properties_size(property_dict['project'],property_dict['property_size'],property_dict['usage'])
+    building_properties_similar(property_dict['project'],property_dict['property_size'],property_dict['usage'])
+elif ecn_exist and property_dict['project'] == "Missing Data":
+    st.markdown(f"Sorry, but building's :red[info is missing] for the property. There's nothing to show 😢")
 
 st.markdown("___")

@@ -233,6 +233,7 @@ add_logo()
 
 # Main page
 st.markdown(f"# {bi_icon('buildings', 3, colours['Cornflower Blue'])} Dubai Tenancy Lookup", unsafe_allow_html=True)
+st.caption(f"{bi_icon('exclamation-diamond-fill', 1, colours['Carrot'])} The available data is limited to the Marsa Dubai area and dates up to December 26, 2022 only.", unsafe_allow_html=True)
 st.markdown("#### Access information about your tenancy contract and rented property")
 st.markdown("""
             After entering your Ejari number, you'll be able to see:

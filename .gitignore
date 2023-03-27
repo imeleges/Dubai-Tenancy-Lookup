@@ -1,3 +1,5 @@
 
 .streamlit/secrets.toml
 Pipfile
+images/.DS_Store
+.DS_Store

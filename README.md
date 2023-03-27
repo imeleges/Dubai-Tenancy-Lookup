@@ -2,15 +2,35 @@
 ### Access information about your tenancy contract and rented property in Dubai, UAE
 
 <p align="center">
-  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/2023-03-23_app_UI.png?raw=true" alt="App UI on 22 March 2023"/>
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/2023-03-27_app_UI.png?raw=true" alt="App UI"/>
   <br>
-  <em>User interfase of the app hosted on Streamlit on 23 March 2023</em>
+  <em>User interfase of the app hosted on Streamlit</em>
 </p>
+
+With `Dubai Tenancy Lookup`, you can be informed about your tenancy contract and the rental market in your building and area. It's a useful tool for tenants who want to have a clear overview of their rental history and ensure that they're paying a fair price for their property.
 
 After entering your `Ejari` number, you'll be able to see:
 
-- All the properties registered under your Ejari number, including their ID, area or neighbourhood, building or complex, property size.
-- By accessing the history (prices from other tenants in the past) for each of your registered properties, you can track the fluctuations in rental prices over time and gain insights into the changing rental market in Dubai.
-- Details about your tenancy contract, including renting dates, type of contract, contract amount, and annual rent amount.
+<p align="center">
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/dtl_property_info.png?raw=true" alt="Property info"/>
+  <br>
+  <em>Property overview</em>
+</p>
 
-With `Dubai Tenancy Lookup`, you can stay informed about your tenancy contract and the rental market in your area. It's a useful tool for tenants who want to have a clear overview of their rental history and ensure that they're paying a fair price for their property.
+<p align="center">
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/dtl_building_info.png?raw=true" alt="Building info"/>
+  <br>
+  <em>Building information with location on the map</em>
+</p>
+
+<p align="center">
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/dtl_property_size_in_building.png?raw=true" alt="Property size for building"/>
+  <br>
+  <em>Property size for building/complex</em>
+</p>
+
+<p align="center">
+  <img src="https://github.com/imeleges/Dubai-Tenancy-Lookup/blob/main/images/dtl_property_size_similar.png?raw=true" alt="Prices for similar property size"/>
+  <br>
+  <em>Prices for similar property size (+/- 10 sq.m)</em>
+</p>
